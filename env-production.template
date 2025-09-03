@@ -1,0 +1,23 @@
+# Production Environment Variables Template
+# Copy this file to .env and fill in your actual values
+
+# Database Configuration (Aiven MySQL)
+DB_HOST=your-aiven-mysql-host
+DB_PORT=your-aiven-mysql-port
+DB_NAME=your-database-name
+DB_USERNAME=your-username
+DB_PASSWORD=your-password
+
+# SendGrid Configuration
+SENDGRID_API_KEY=your-sendgrid-api-key
+SENDGRID_FROM_EMAIL=your-verified-sender-email
+SENDGRID_FROM_NAME=your-sender-name
+
+# Server Configuration
+SERVER_PORT=10000
+
+# CORS Configuration (for production frontend)
+CORS_ALLOWED_ORIGINS=https://your-frontend-domain.com,https://your-frontend-render-app.onrender.com
+
+# Spring Profile
+SPRING_PROFILES_ACTIVE=production
