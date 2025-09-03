@@ -356,4 +356,28 @@ public class RecipeController {
     public ResponseEntity<String> health() {
         return ResponseEntity.ok("Recipe service is healthy! 🍳");
     }
+
+    // ===== EMAIL TEST ENDPOINT =====
+    @PostMapping("/test-email")
+    public ResponseEntity<String> testEmail(@RequestParam String email) {
+        log.info("Testing email service with: {}", email);
+        
+        try {
+            boolean emailSent = emailService.sendRecipeEmail(
+                email, 
+                "This is a test email from Smart Recipe Generator! 🍳", 
+                "Test Recipe"
+            );
+            
+            if (emailSent) {
+                return ResponseEntity.ok("Test email sent successfully to " + email);
+            } else {
+                return ResponseEntity.internalServerError().body("Failed to send test email");
+            }
+            
+        } catch (Exception e) {
+            log.error("Error sending test email to {}: {}", email, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
+        }
+    }
 }
