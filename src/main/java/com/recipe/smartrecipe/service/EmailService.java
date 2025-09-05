@@ -37,6 +37,10 @@ public class EmailService {
      */
     public boolean sendRecipeEmail(String toEmail, String recipeContent, String recipeTitle) {
         try {
+            log.info("Attempting to send email to: {}", toEmail);
+            log.info("From email: {}, From name: {}", fromEmail, fromName);
+            log.info("API key present: {}", sendGridApiKey != null && !sendGridApiKey.isEmpty());
+            
             Email from = new Email(fromEmail, fromName);
             Email to = new Email(toEmail);
             

@@ -3,10 +3,14 @@ package com.recipe.smartrecipe.controller;
 import com.recipe.smartrecipe.dto.RecipeRequest;
 import com.recipe.smartrecipe.dto.RecipeResponse;
 import com.recipe.smartrecipe.dto.EmailRequest;
+import com.recipe.smartrecipe.dto.ReviewRequest;
+import com.recipe.smartrecipe.dto.ReviewResponse;
+import com.recipe.smartrecipe.dto.ReviewEmailRequest;
 import com.recipe.smartrecipe.entity.Recipe;
 import com.recipe.smartrecipe.entity.RecipeRequestEntity;
 import com.recipe.smartrecipe.service.RecipeService;
 import com.recipe.smartrecipe.service.EmailService;
+import com.recipe.smartrecipe.service.ReviewService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +18,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 
 @RestController
 @RequestMapping("/api/recipes")
@@ -23,6 +29,7 @@ public class RecipeController {
 
     private final RecipeService recipeService;
     private final EmailService emailService;
+    private final ReviewService reviewService;
 
     // ===== RECIPE GENERATION =====
     @PostMapping("/generate")
@@ -379,5 +386,185 @@ public class RecipeController {
             log.error("Error sending test email to {}: {}", email, e.getMessage(), e);
             return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
         }
+    }
+
+    // ===== ENVIRONMENT CHECK ENDPOINT =====
+    @GetMapping("/check-env")
+    public ResponseEntity<String> checkEnvironment() {
+        try {
+            // This will help us see if environment variables are loaded
+            return ResponseEntity.ok("Environment check - check logs for details");
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("Error: " + e.getMessage());
+        }
+    }
+
+    // ===== REVIEW ENDPOINTS =====
+    
+    // Create Review
+    @PostMapping("/reviews")
+    public ResponseEntity<ReviewResponse> createReview(@Valid @RequestBody ReviewRequest request) {
+        log.info("Creating review for recipe ID: {}", request.getRecipeId());
+        
+        try {
+            ReviewResponse review = reviewService.createReview(request);
+            return ResponseEntity.ok(review);
+        } catch (Exception e) {
+            log.error("Error creating review: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    // Get Reviews by Recipe ID
+    @GetMapping("/{recipeId}/reviews")
+    public ResponseEntity<List<ReviewResponse>> getReviewsByRecipeId(@PathVariable Long recipeId) {
+        log.info("Fetching reviews for recipe ID: {}", recipeId);
+        
+        try {
+            List<ReviewResponse> reviews = reviewService.getReviewsByRecipeId(recipeId);
+            return ResponseEntity.ok(reviews);
+        } catch (Exception e) {
+            log.error("Error fetching reviews for recipe {}: {}", recipeId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    // Get Reviews by User ID
+    @GetMapping("/user/{userId}/reviews")
+    public ResponseEntity<List<ReviewResponse>> getReviewsByUserId(@PathVariable Long userId) {
+        log.info("Fetching reviews for user ID: {}", userId);
+        
+        try {
+            List<ReviewResponse> reviews = reviewService.getReviewsByUserId(userId);
+            return ResponseEntity.ok(reviews);
+        } catch (Exception e) {
+            log.error("Error fetching reviews for user {}: {}", userId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    // Get Review by ID
+    @GetMapping("/reviews/{id}")
+    public ResponseEntity<ReviewResponse> getReviewById(@PathVariable Long id) {
+        log.info("Fetching review with ID: {}", id);
+        
+        try {
+            return reviewService.getReviewById(id)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            log.error("Error fetching review with ID {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    // Update Review
+    @PutMapping("/reviews/{id}")
+    public ResponseEntity<ReviewResponse> updateReview(
+            @PathVariable Long id,
+            @Valid @RequestBody ReviewRequest request) {
+        
+        log.info("Updating review with ID: {}", id);
+        
+        try {
+            return reviewService.updateReview(id, request)
+                    .map(ResponseEntity::ok)
+                    .orElse(ResponseEntity.notFound().build());
+        } catch (Exception e) {
+            log.error("Error updating review with ID {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    // Delete Review
+    @DeleteMapping("/reviews/{id}")
+    public ResponseEntity<String> deleteReview(@PathVariable Long id) {
+        log.info("Deleting review with ID: {}", id);
+        
+        try {
+            boolean deleted = reviewService.deleteReview(id);
+            if (deleted) {
+                return ResponseEntity.ok("Review deleted successfully");
+            } else {
+                return ResponseEntity.notFound().build();
+            }
+        } catch (Exception e) {
+            log.error("Error deleting review with ID {}: {}", id, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    // Get Recipe Statistics
+    @GetMapping("/{recipeId}/stats")
+    public ResponseEntity<Map<String, Object>> getRecipeStats(@PathVariable Long recipeId) {
+        log.info("Fetching stats for recipe ID: {}", recipeId);
+        
+        try {
+            Double averageRating = reviewService.getAverageRating(recipeId);
+            Long reviewCount = reviewService.getReviewCount(recipeId);
+            
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("averageRating", averageRating);
+            stats.put("reviewCount", reviewCount);
+            
+            return ResponseEntity.ok(stats);
+        } catch (Exception e) {
+            log.error("Error fetching stats for recipe {}: {}", recipeId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    // Send Review via Email
+    @PostMapping("/reviews/send-email")
+    public ResponseEntity<String> sendReviewEmail(@Valid @RequestBody ReviewEmailRequest emailRequest) {
+        log.info("Sending review email to: {}", emailRequest.getEmail());
+        
+        try {
+            String emailContent = createReviewEmailContent(
+                emailRequest.getReviewContent(),
+                emailRequest.getRecipeTitle(),
+                emailRequest.getReviewerName(),
+                emailRequest.getRating()
+            );
+            
+            boolean emailSent = emailService.sendRecipeEmail(
+                emailRequest.getEmail(),
+                emailContent,
+                "Review for: " + emailRequest.getRecipeTitle()
+            );
+            
+            if (emailSent) {
+                log.info("Review email sent successfully to: {}", emailRequest.getEmail());
+                return ResponseEntity.ok("Review sent successfully to " + emailRequest.getEmail());
+            } else {
+                log.error("Failed to send review email to: {}", emailRequest.getEmail());
+                return ResponseEntity.internalServerError().body("Failed to send email");
+            }
+            
+        } catch (Exception e) {
+            log.error("Error sending review email to {}: {}", emailRequest.getEmail(), e.getMessage(), e);
+            return ResponseEntity.internalServerError().body("Error sending email: " + e.getMessage());
+        }
+    }
+    
+    // Helper method to create review email content
+    private String createReviewEmailContent(String reviewContent, String recipeTitle, 
+                                          String reviewerName, Integer rating) {
+        String stars = "★".repeat(rating != null ? rating : 0);
+        String reviewer = reviewerName != null ? reviewerName : "Anonymous";
+        
+        return String.format("""
+            🍳 Recipe Review
+            
+            Recipe: %s
+            Reviewer: %s
+            Rating: %s (%d/5)
+            
+            Review:
+            %s
+            
+            ---
+            Generated by Smart Recipe Generator
+            """, recipeTitle, reviewer, stars, rating != null ? rating : 0, reviewContent);
     }
 }
