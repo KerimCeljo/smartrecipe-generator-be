@@ -163,7 +163,7 @@ public class ReviewService {
         ReviewResponse response = new ReviewResponse();
         response.setId(review.getId());
         response.setRecipeId(review.getRecipe().getId());
-        response.setRecipeTitle(review.getRecipe().getTitle());
+        response.setRecipeTitle(review.getRecipe().getRecipeTitle());
         response.setUserId(review.getUserId());
         response.setReviewText(review.getReviewText());
         response.setRating(review.getRating());
