@@ -157,13 +157,32 @@ public class ReviewService {
     }
     
     /**
+     * Extract recipe title from content
+     */
+    private String extractRecipeTitle(String content) {
+        if (content == null || content.isEmpty()) {
+            return "Untitled Recipe";
+        }
+        
+        // Split by newlines and get the first line
+        String[] lines = content.split("\n");
+        if (lines.length > 0) {
+            String firstLine = lines[0].trim();
+            // Remove emoji and "RECIPE" text to get a cleaner title
+            return firstLine.replaceAll("🍳\\s*", "").replaceAll("\\s+RECIPE$", "");
+        }
+        
+        return "Untitled Recipe";
+    }
+    
+    /**
      * Convert Review entity to ReviewResponse DTO
      */
     private ReviewResponse convertToResponse(Review review) {
         ReviewResponse response = new ReviewResponse();
         response.setId(review.getId());
         response.setRecipeId(review.getRecipe().getId());
-        response.setRecipeTitle(review.getRecipe().getRecipeTitle());
+        response.setRecipeTitle(extractRecipeTitle(review.getRecipe().getContent()));
         response.setUserId(review.getUserId());
         response.setReviewText(review.getReviewText());
         response.setRating(review.getRating());
